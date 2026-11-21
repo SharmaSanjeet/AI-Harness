@@ -180,3 +180,5 @@ lead-outreach-agent/
 ---
 
 *Built as **Lab 1: Sales & Marketing Automation Agent** in the AI Harness track — the classic CRM → enrich → generate → log workflow, modernized onto a current LangChain stack with local Ollama models and a hand-rolled agent loop for full transparency.*
+
+*Authored by **Sanjeet Sharma** (CISSP) · [LinkedIn](https://www.linkedin.com/in/sanjeet-sharma-cissp-17b68570/) · [GitHub](https://github.com/SharmaSanjeet)*
