@@ -1,0 +1,7 @@
+# langchain/langgraph omitted deliberately: their compiled ormsgpack wheel is
+# blocked by WDAC on this host. langchain-ollama pulls in langchain-core only,
+# which is sufficient for the hand-rolled agent loop in agent.py.
+fastapi
+uvicorn[standard]
+langchain-ollama
+python-dotenv

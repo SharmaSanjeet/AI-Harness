@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OutreachPilot — Sales & Marketing Automation Agent</title>
+<style>
+  :root {
+    --bg: #f5f6fa;
+    --card: #ffffff;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --accent: #6366f1;
+    --accent2: #8b5cf6;
+    --green: #10b981;
+    --amber: #d97706;
+    --red: #ef4444;
+    --radius: 16px;
+    --shadow: 0 1px 2px rgba(15,23,42,.05), 0 4px 16px rgba(15,23,42,.06);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    background:
+      radial-gradient(1200px 400px at 80% -10%, rgba(139,92,246,.10), transparent 60%),
+      radial-gradient(900px 350px at 5% -10%, rgba(99,102,241,.10), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  header {
+    max-width: 1180px; margin: 0 auto; padding: 26px 24px 10px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 6px 16px rgba(99,102,241,.35);
+  }
+  .logo svg { width: 22px; height: 22px; fill: #fff; }
+  .brand h1 { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+  .brand p { font-size: 13px; color: var(--muted); }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line); background: #fff; color: var(--muted);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .badge .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 1.6s infinite; }
+  .badge.draft { color: var(--amber); border-color: #fde68a; background: #fffbeb; }
+
+  main {
+    max-width: 1180px; margin: 14px auto 0; padding: 0 24px 30px;
+    display: grid; grid-template-columns: 1.9fr 1fr; gap: 18px; align-items: start;
+  }
+  .col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px;
+  }
+  .card h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 14px; }
+
+  .input-row { display: flex; gap: 10px; }
+  .input-row input {
+    flex: 1; padding: 13px 16px; font-size: 15px; border: 1.5px solid var(--line);
+    border-radius: 12px; outline: none; transition: border .15s, box-shadow .15s; background: #fbfcfe;
+  }
+  .input-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.15); background: #fff; }
+  #runBtn {
+    padding: 13px 22px; font-size: 15px; font-weight: 600; color: #fff; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    cursor: pointer; box-shadow: 0 4px 14px rgba(99,102,241,.35); transition: transform .12s, opacity .15s;
+    white-space: nowrap;
+  }
+  #runBtn:hover:not(:disabled) { transform: translateY(-1px); }
+  #runBtn:disabled { opacity: .65; cursor: wait; }
+
+  .chips { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
+  .chips span.label { font-size: 12px; color: var(--muted); }
+  .chip {
+    font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+    background: #eef2ff; color: #4f46e5; cursor: pointer; border: 1px solid #e0e7ff; transition: background .15s;
+  }
+  .chip:hover { background: #e0e7ff; }
+
+  .empty {
+    border: 1.5px dashed var(--line); border-radius: 12px; padding: 34px 20px;
+    text-align: center; color: var(--muted); font-size: 14px;
+  }
+  .empty .icon { font-size: 26px; margin-bottom: 8px; }
+
+  .step { display: flex; gap: 14px; }
+  .step .rail { width: 28px; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+  .step .rail .bar { flex: 1; width: 2px; background: var(--line); margin-top: 4px; }
+  .step:last-child .rail .bar { display: none; }
+  .dot {
+    width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .step.done .dot { background: #ecfdf5; color: var(--green); }
+  .step.active .dot { background: #eef2ff; color: var(--accent); animation: pulse 1.2s infinite; }
+  .step.error .dot { background: #fef2f2; color: var(--red); }
+  .step-body { flex: 1; padding-bottom: 20px; min-width: 0; }
+  .step-title { font-weight: 650; font-size: 14.5px; }
+  .step-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .step-detail {
+    font-size: 11.5px; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 10px; margin-top: 7px; color: #475569;
+    white-space: pre-wrap; word-break: break-word; max-height: 130px; overflow: hidden;
+  }
+  .step-status { font-size: 11.5px; font-weight: 600; margin-top: 3px; }
+  .step.done .step-status { color: var(--green); }
+  .step.active .step-status { color: var(--accent); }
+  .step.error .step-status { color: var(--red); }
+
+  .summary {
+    margin-top: 6px; font-size: 13.5px; color: #334155; background: #f8fafc;
+    border-left: 3px solid var(--accent); border-radius: 0 10px 10px 0; padding: 10px 14px;
+    white-space: pre-wrap;
+  }
+
+  .email-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .email-head h2 { margin-bottom: 0; }
+  .email-head .spacer { flex: 1; }
+  #copyBtn {
+    font-size: 12.5px; font-weight: 600; padding: 6px 14px; border-radius: 999px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--ink);
+    transition: background .15s;
+  }
+  #copyBtn:hover { background: #f1f5f9; }
+  .email-subject {
+    font-size: 15.5px; font-weight: 700; padding: 12px 16px; background: #eef2ff;
+    border-radius: 10px; margin-bottom: 12px; color: #3730a3;
+  }
+  .email-body {
+    font-family: inherit; font-size: 14px; line-height: 1.65; color: #1e293b;
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  .activity-item { display: flex; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); align-items: flex-start; }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-item .a-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-top: 6px; flex-shrink: 0; }
+  .activity-item .a-text { font-size: 13px; line-height: 1.45; }
+  .activity-item .a-time { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .how ol { padding-left: 18px; font-size: 13px; color: #475569; line-height: 1.9; }
+  .how b { color: var(--ink); }
+
+  footer {
+    max-width: 1180px; margin: 0 auto; padding: 4px 24px 26px;
+    font-size: 12px; color: var(--muted); text-align: center;
+  }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: #fff; font-size: 13.5px; font-weight: 500;
+    padding: 12px 20px; border-radius: 12px; box-shadow: 0 8px 30px rgba(15,23,42,.35);
+    opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; max-width: 90vw;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.error { background: #b91c1c; }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </div>
+    <div>
+      <h1>OutreachPilot</h1>
+      <p>Sales &amp; Marketing Automation Agent</p>
+    </div>
+  </div>
+  <div class="badges">
+    <span class="badge"><span class="pulse-dot"></span> Local LLM · Ollama</span>
+    <span class="badge draft">✓ Draft-only — nothing auto-sends</span>
+  </div>
+</header>
+
+<main>
+  <div class="col">
+    <div class="card">
+      <h2>New outreach run</h2>
+      <div class="input-row">
+        <input id="company" placeholder="Company name (e.g. Acme Corp)" autocomplete="off">
+        <button id="runBtn">Generate draft</button>
+      </div>
+      <div class="chips">
+        <span class="label">Try:</span>
+        <span class="chip" data-c="Acme Corp">Acme Corp</span>
+        <span class="chip" data-c="BlueSky Ltd">BlueSky Ltd</span>
+        <span class="chip" data-c="Unknown Inc">Unknown Inc</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Agent trace</h2>
+      <div id="trace">
+        <div class="empty">
+          <div class="icon">🛰️</div>
+          Run your first outreach — the agent will look up the contact, enrich the company,<br>draft the email, and log the activity, all on its own.
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="emailCard" hidden>
+      <div class="email-head">
+        <h2>Email draft</h2>
+        <span class="badge draft">DRAFT — review before sending</span>
+        <span class="spacer"></span>
+        <button id="copyBtn">Copy</button>
+      </div>
+      <div class="email-subject" id="emailSubject"></div>
+      <pre class="email-body" id="emailBody"></pre>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card">
+      <h2>CRM activity log</h2>
+      <div id="activity">
+        <div class="empty" style="padding:22px">No activity yet</div>
+      </div>
+    </div>
+
+    <div class="card how">
+      <h2>How it works</h2>
+      <ol>
+        <li><b>CRM lookup</b> — agent fetches the contact from the mock CRM</li>
+        <li><b>Enrichment</b> — pulls industry, size &amp; recent news</li>
+        <li><b>Email drafting</b> — local LLM (llama3.1:8b) ghostwrites the draft</li>
+        <li><b>CRM logging</b> — activity note written back to the CRM</li>
+      </ol>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Powered by fully local LLMs (Ollama · qwen2.5:3b orchestrator, llama3.1:8b writer) · Guardrails: draft-only output, sanitized company input, auditable CRM logs
+</footer>
+
+<div id="toast"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const SKELETON_STEPS = [
+    ["CRM lookup", "Fetching contact from the CRM…"],
+    ["Company enrichment", "Researching industry, size and news…"],
+    ["Email drafting", "Local LLM is writing the draft…"],
+    ["CRM logging", "Saving the activity note…"],
+  ];
+
+  let toastTimer;
+  function toast(msg, type) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.className = "show" + (type === "error" ? " error" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (t.className = ""), 4200);
+  }
+
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  function preview(v, max = 160) {
+    let s = typeof v === "string" ? v : JSON.stringify(v);
+    if (s && s.length > max) s = s.slice(0, max) + " …";
+    return s;
+  }
+
+  function renderSkeleton() {
+    $("trace").innerHTML = SKELETON_STEPS.map(([title, sub], i) => `
+      <div class="step active">
+        <div class="rail"><div class="dot">${i + 1}</div><div class="bar"></div></div>
+        <div class="step-body">
+          <div class="step-title">${title}</div>
+          <div class="step-sub">${sub}</div>
+          <div class="step-status">working…</div>
+        </div>
+      </div>`).join("");
+  }
+
+  function clearTrace() {
+    $("trace").innerHTML = `
+      <div class="empty"><div class="icon">🛰️</div>
+      Run your first outreach — the agent will look up the contact, enrich the company,<br>draft the email, and log the activity, all on its own.</div>`;
+  }
+
+  function renderTrace(data) {
+    const steps = data.steps || [];
+    if (!steps.length) {
+      $("trace").innerHTML = `
+        <div class="step error">
+          <div class="rail"><div class="dot">!</div></div>
+          <div class="step-body">
+            <div class="step-title">No tool calls recorded</div>
+            <div class="step-status">error</div>
+          </div>
+        </div>
+        ${data.summary ? `<div class="summary">${esc(data.summary)}</div>` : ""}`;
+      return;
+    }
+    $("trace").innerHTML = steps.map((s, i) => {
+      const failed = s.result && typeof s.result === "object" && s.result.ok === false;
+      const cls = failed ? "error" : "done";
+      const mark = failed ? "!" : "✓";
+      const status = failed ? "failed" : "done";
+      return `
+      <div class="step ${cls}">
+        <div class="rail"><div class="dot">${mark}</div><div class="bar"></div></div>
+        <div class="step-body">
+          <div class="step-title">${esc(s.label || s.tool)}</div>
+          <div class="step-sub">${esc(s.tool)}()</div>
+          <div class="step-detail">args: ${esc(preview(s.args))}</div>
+          ${s.result != null ? `<div class="step-detail">→ ${esc(preview(s.result))}</div>` : ""}
+          <div class="step-status">${status}</div>
+        </div>
+      </div>`;
+    }).join("");
+    if (data.summary) $("trace").innerHTML += `<div class="summary">${esc(data.summary)}</div>`;
+  }
+
+  function renderEmail(data) {
+    const card = $("emailCard");
+    if (!data.email) {
+      card.hidden = true;
+      if (!data.email && data.steps && data.steps.length)
+        toast(data.log || "Agent finished but produced no email draft — see the trace.", "error");
+      return;
+    }
+    const raw = data.email.trim();
+    const m = raw.match(/subject\s*:\s*([^\n]+)/i);
+    const subject = m ? m[1].trim() : "(no subject)";
+    const body = m ? raw.slice(m.index + m[0].length).trim() : raw;
+    $("emailSubject").textContent = "Subject: " + subject;
+    $("emailBody").textContent = body;
+    card.hidden = false;
+    card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  async function loadActivities() {
+    try {
+      const res = await fetch("/activities");
+      const data = await res.json();
+      const items = data.activities || [];
+      if (!items.length) {
+        $("activity").innerHTML = `<div class="empty" style="padding:22px">No activity yet</div>`;
+        return;
+      }
+      $("activity").innerHTML = items.map((a) => `
+        <div class="activity-item">
+          <div class="a-dot"></div>
+          <div class="a-text">
+            <div>${esc(a.note)}</div>
+            <div class="a-time">${esc(a.company)} · ${esc(a.at)}</div>
+          </div>
+        </div>`).join("");
+    } catch (e) {
+      /* activity panel is non-critical */
+    }
+  }
+
+  async function runOutreach() {
+    const company = $("company").value.trim();
+    if (!company) { toast("Enter a company name first", "error"); return; }
+    const btn = $("runBtn");
+    btn.disabled = true;
+    btn.textContent = "Agent working…";
+    renderSkeleton();
+    try {
+      const res = await fetch("/sales_email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ company }),
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      renderTrace(data);
+      renderEmail(data);
+      if (data.log) toast(data.log);
+      loadActivities();
+    } catch (e) {
+      clearTrace();
+      toast("Run failed: " + e.message + " — check that the server and Ollama are running.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Generate draft";
+    }
+  }
+
+  $("runBtn").addEventListener("click", runOutreach);
+  $("company").addEventListener("keydown", (e) => { if (e.key === "Enter") runOutreach(); });
+  document.querySelectorAll(".chip").forEach((c) =>
+    c.addEventListener("click", () => {
+      $("company").value = c.dataset.c;
+      runOutreach();
+    })
+  );
+  $("copyBtn").addEventListener("click", async () => {
+    const text = $("emailSubject").textContent + "\n\n" + $("emailBody").textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      $("copyBtn").textContent = "Copied ✓";
+      setTimeout(() => ($("copyBtn").textContent = "Copy"), 1600);
+    } catch (e) {
+      toast("Copy failed — select the text manually", "error");
+    }
+  });
+
+  loadActivities();
+</script>
+</body>
+</html>
