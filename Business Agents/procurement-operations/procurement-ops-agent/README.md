@@ -1,8 +1,10 @@
 # ProcurePilot — Procurement & Operations Agent
 
-> **Lab 3 of the AI Harness agentic-apps track.** An agent that answers *"Do we need to reorder SKU X?"* with real reorder-point math, pulls live vendor quotes, drafts a policy-checked purchase requisition (PR), and hands it to a human approval queue — never placing an order itself, with a full explainable step trace.
+> **Lab 3 of the AI Harness agentic-apps track.** An agent that answers *"Do we need to reorder SKU X?"* with real reorder-point math, pulls live vendor quotes, drafts a policy-checked purchase requisition (PR), and hands it to a human approval queue — never placing an order itself, with a full explainable step trace. In business terms: it keeps stock inside policy — no stockouts, no overbuying — while every purchase stays behind a human approval gate with a complete audit trail.
 
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-REST%20API-009688) ![SQLite](https://img.shields.io/badge/store-SQLite-blue) ![LLM](https://img.shields.io/badge/LLM-local%20·%20Ollama-black) ![Guardrail](https://img.shields.io/badge/PR--only·HITL-approvals-orange)
+
+![ProcurePilot demo — assess LI-200: reorder-point math, live vendor quotes, policy checks, PR draft and human sign-off](docs/assets/demo.gif)
 
 **Taxonomy:** Segment `Business Agents` → Category `Procurement & Operations` → Sub-category `Purchase Requisition Automation`
 
