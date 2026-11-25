@@ -1,0 +1,7 @@
+# sqlalchemy<2.1 pinned deliberately: 2.1 requires its compiled Cython extension,
+# which is blocked by WDAC on this host. 2.0.x falls back to pure Python.
+fastapi
+uvicorn[standard]
+sqlalchemy<2.1
+requests
+python-dotenv

@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProcurePilot — Procurement &amp; Operations Agent</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Cpath d='M16 7l8 4.5v9L16 25l-8-4.5v-9L16 7z' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M8 11.5l8 4.5 8-4.5M16 16v9' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f5f6fa;
+    --card: #ffffff;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --faint: #94a3b8;
+    --line: #e2e8f0;
+    --accent: #6366f1;
+    --accent2: #8b5cf6;
+    --green: #10b981;
+    --amber: #d97706;
+    --red: #ef4444;
+    --radius: 16px;
+    --shadow: 0 1px 2px rgba(15,23,42,.05), 0 4px 16px rgba(15,23,42,.06);
+    --shadow-lg: 0 2px 4px rgba(15,23,42,.05), 0 12px 32px rgba(15,23,42,.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    background:
+      radial-gradient(1200px 420px at 85% -12%, rgba(139,92,246,.09), transparent 60%),
+      radial-gradient(900px 380px at 0% -10%, rgba(99,102,241,.09), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- header ---------- */
+  header {
+    max-width: 1180px; margin: 0 auto; padding: 26px 24px 6px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 6px 16px rgba(99,102,241,.35);
+  }
+  .logo svg { width: 24px; height: 24px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .brand h1 { font-size: 21px; font-weight: 750; letter-spacing: -.02em; }
+  .brand p { font-size: 13px; color: var(--muted); }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line); background: #fff; color: var(--muted);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .badge svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .badge .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 1.6s infinite; }
+  .badge.guard { color: #b45309; border-color: #fde68a; background: #fffbeb; }
+  .badge.hitl { color: #4f46e5; border-color: #e0e7ff; background: #eef2ff; }
+
+  /* ---------- layout ---------- */
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 24px 8px; }
+
+  .kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px; margin-top: 16px;
+  }
+  .kpi {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px 18px; display: flex; align-items: center; gap: 14px;
+    animation: rise .35s ease both;
+  }
+  .kpi .k-icon {
+    width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+    display: grid; place-items: center;
+  }
+  .kpi .k-icon svg { width: 19px; height: 19px; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .kpi.indigo .k-icon { background: #eef2ff; color: #4f46e5; }
+  .kpi.red    .k-icon { background: #fef2f2; color: #dc2626; }
+  .kpi.amber  .k-icon { background: #fffbeb; color: #d97706; }
+  .kpi.green  .k-icon { background: #ecfdf5; color: #059669; }
+  .kpi .k-val { font-size: 24px; font-weight: 750; letter-spacing: -.02em; line-height: 1.1; }
+  .kpi .k-val.alert { color: #dc2626; }
+  .kpi .k-val.warn  { color: #b45309; }
+  .kpi .k-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  main {
+    display: grid; grid-template-columns: 1.8fr 1fr; gap: 18px;
+    margin-top: 18px; align-items: start;
+  }
+  .col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px; animation: rise .35s ease both;
+  }
+  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .card-head h2 {
+    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted);
+  }
+  .card-head .spacer { flex: 1; }
+
+  /* ---------- assessment ---------- */
+  .input-row { display: flex; gap: 10px; }
+  .input-row input {
+    flex: 1; min-width: 0; padding: 12px 15px; font-size: 15px; border: 1.5px solid var(--line);
+    border-radius: 12px; outline: none; transition: border .15s, box-shadow .15s; background: #fbfcfe;
+  }
+  .input-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.15); background: #fff; }
+  #skuInput { text-transform: uppercase; }
+  #assessBtn {
+    padding: 12px 20px; font-size: 15px; font-weight: 600; color: #fff; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    cursor: pointer; box-shadow: 0 4px 14px rgba(99,102,241,.35); transition: transform .12s, opacity .15s;
+    white-space: nowrap;
+  }
+  #assessBtn:hover:not(:disabled) { transform: translateY(-1px); }
+  #assessBtn:disabled { opacity: .65; cursor: wait; }
+
+  .input-row2 { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+  .input-row2 label { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  .input-row2 input {
+    width: 180px; padding: 8px 12px; font-size: 13px; border: 1.5px solid var(--line);
+    border-radius: 10px; outline: none; background: #fbfcfe; transition: border .15s, box-shadow .15s;
+  }
+  .input-row2 input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.12); background: #fff; }
+
+  .chips { display: flex; gap: 8px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+  .chips .label { font-size: 12px; color: var(--muted); }
+  .chip {
+    font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+    background: #eef2ff; color: #4f46e5; cursor: pointer; border: 1px solid #e0e7ff;
+    transition: background .15s; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  .chip:hover { background: #e0e7ff; }
+  .chip.bad { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+  .chip.bad:hover { background: #fecaca; }
+
+  /* ---------- empty states ---------- */
+  .empty {
+    border: 1.5px dashed var(--line); border-radius: 12px; padding: 30px 20px;
+    text-align: center; color: var(--muted); font-size: 14px; line-height: 1.55;
+  }
+  .empty svg { width: 26px; height: 26px; stroke: var(--faint); fill: none; stroke-width: 1.8;
+               stroke-linecap: round; stroke-linejoin: round; margin-bottom: 8px; }
+
+  /* ---------- agent trace ---------- */
+  .step { display: flex; gap: 14px; }
+  .step .rail { width: 28px; display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+  .step .rail .bar { flex: 1; width: 2px; background: var(--line); margin-top: 4px; }
+  .step:last-child .rail .bar { display: none; }
+  .dot {
+    width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .dot svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .step.done .dot  { background: #ecfdf5; color: var(--green); }
+  .step.warn .dot  { background: #fffbeb; color: var(--amber); }
+  .step.error .dot { background: #fef2f2; color: var(--red); }
+  .step-body { flex: 1; padding-bottom: 18px; min-width: 0; }
+  .step-title { font-weight: 650; font-size: 14.5px; }
+  .step-sub { font-size: 12px; color: var(--muted); margin-top: 1px;
+              font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  .step-status { font-size: 11.5px; font-weight: 600; margin-top: 4px; }
+  .step.done .step-status  { color: var(--green); }
+  .step.warn .step-status  { color: var(--amber); }
+  .step.error .step-status { color: var(--red); }
+  .step-detail {
+    font-size: 12px; background: #f8fafc; border: 1px solid var(--line); border-radius: 9px;
+    padding: 8px 12px; margin-top: 7px; color: #475569; line-height: 1.6;
+  }
+  .step-detail .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11.5px; }
+  .quote-row { display: flex; gap: 8px; align-items: center; padding: 4px 0; flex-wrap: wrap; }
+  .quote-row + .quote-row { border-top: 1px dashed var(--line); }
+  .quote-row .q-name { font-weight: 600; min-width: 110px; }
+  .quote-row .q-flag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .q-flag.ok  { background: #ecfdf5; color: #059669; }
+  .q-flag.bad { background: #fef2f2; color: #b91c1c; }
+  .checks { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+  .check-chip {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600;
+    padding: 4px 10px; border-radius: 999px; border: 1px solid;
+  }
+  .check-chip svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .check-chip.pass { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+  .check-chip.fail { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+
+  /* ---------- decision card ---------- */
+  .banner { border-radius: 12px; padding: 13px 16px; font-size: 13.5px; font-weight: 600;
+            display: flex; gap: 10px; align-items: flex-start; line-height: 1.5; }
+  .banner svg { width: 17px; height: 17px; flex-shrink: 0; margin-top: 1px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .banner.ok    { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+  .banner.info  { background: #eef2ff; color: #3730a3; border: 1px solid #e0e7ff; }
+  .banner.warn  { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+  .banner.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+  .vendor-box {
+    margin-top: 14px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  }
+  .vendor-top { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: #f8fafc;
+                border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .vendor-avatar {
+    width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-weight: 750; font-size: 15px;
+  }
+  .vendor-top .v-name { font-size: 15.5px; font-weight: 700; }
+  .vendor-top .v-meta { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .vendor-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); }
+  .vendor-stats .stat { background: #fff; padding: 12px 16px; }
+  .vendor-stats .stat .s-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  .vendor-stats .stat .s-val { font-size: 16.5px; font-weight: 750; margin-top: 3px; }
+  .vendor-stats .stat .s-val.total { color: #3730a3; }
+
+  .policy-block { margin-top: 14px; padding: 13px 16px; background: #f8fafc; border: 1px solid var(--line);
+                  border-radius: 12px; }
+  .policy-block .p-title { font-size: 12px; font-weight: 700; text-transform: uppercase;
+                           letter-spacing: .06em; color: var(--muted); margin-bottom: 9px; }
+  .policy-reason { font-size: 13px; color: #334155; line-height: 1.55; margin-top: 10px; }
+  .advisor-line { font-size: 11.5px; color: var(--faint); margin-top: 8px;
+                  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+
+  .json-wrap { margin-top: 14px; }
+  .json-wrap summary {
+    cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--muted);
+    display: flex; align-items: center; gap: 8px; user-select: none;
+  }
+  .json-wrap summary:hover { color: var(--ink); }
+  .json-wrap pre {
+    margin-top: 10px; font-size: 11.5px; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 14px 16px;
+    max-height: 280px; overflow: auto; line-height: 1.55; white-space: pre; word-break: break-word;
+  }
+  #copyJsonBtn {
+    font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 999px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer; color: var(--ink);
+    transition: background .15s;
+  }
+  #copyJsonBtn:hover { background: #f1f5f9; }
+
+  /* ---------- inventory table ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  thead th {
+    text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); font-weight: 700; padding: 9px 12px; border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  tbody td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background .12s; }
+  tbody tr:hover { background: #f8fafc; }
+  .sku-cell .sku { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-weight: 700; font-size: 12.5px; }
+  .sku-cell .pname { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .pos-cell { min-width: 130px; }
+  .pos-bar { height: 5px; border-radius: 999px; background: #e2e8f0; margin-top: 6px; overflow: hidden; max-width: 120px; }
+  .pos-bar .fill { height: 100%; border-radius: 999px; transition: width .5s ease; }
+  .fill.ok { background: var(--green); }
+  .fill.watch { background: var(--amber); }
+  .fill.reorder { background: var(--red); }
+  .pill {
+    font-size: 11px; font-weight: 700; padding: 4px 11px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .pill.ok      { background: #ecfdf5; color: #047857; }
+  .pill.watch   { background: #fffbeb; color: #b45309; }
+  .pill.reorder { background: #fef2f2; color: #b91c1c; }
+  .pill.pending { background: #fffbeb; color: #b45309; }
+  .pill.approved{ background: #ecfdf5; color: #047857; }
+  .row-btn {
+    font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid #e0e7ff; background: #eef2ff; color: #4f46e5; transition: background .15s;
+    white-space: nowrap;
+  }
+  .row-btn:hover { background: #e0e7ff; }
+
+  .ghost-btn {
+    font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: #fff; color: var(--muted);
+    display: inline-flex; align-items: center; gap: 6px; transition: background .15s, color .15s;
+  }
+  .ghost-btn:hover { background: #f1f5f9; color: var(--ink); }
+  .ghost-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2;
+                   stroke-linecap: round; stroke-linejoin: round; }
+  .ghost-btn.danger:hover { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+
+  /* ---------- approvals ---------- */
+  .approver-row { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; }
+  .approver-row label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .approver-row input {
+    flex: 1; min-width: 0; padding: 8px 12px; font-size: 13px; border: 1.5px solid var(--line);
+    border-radius: 10px; outline: none; background: #fbfcfe; transition: border .15s, box-shadow .15s;
+  }
+  .approver-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.12); background: #fff; }
+  .sod-note { font-size: 11px; color: var(--faint); margin-top: -8px; margin-bottom: 14px; line-height: 1.5;
+              display: flex; gap: 6px; align-items: center; }
+  .sod-note svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+
+  .pr-card { border: 1px solid var(--line); border-radius: 12px; padding: 13px 15px; margin-bottom: 11px;
+             transition: box-shadow .15s; }
+  .pr-card:hover { box-shadow: var(--shadow); }
+  .pr-card:last-child { margin-bottom: 0; }
+  .pr-top { display: flex; align-items: center; gap: 10px; }
+  .pr-top .pr-id { font-weight: 750; font-size: 13.5px; }
+  .pr-top .spacer { flex: 1; }
+  .pr-line { font-size: 13px; color: #334155; margin-top: 6px; }
+  .pr-line b { color: var(--ink); }
+  .pr-sub { font-size: 11.5px; color: var(--faint); margin-top: 4px; }
+  .approve-btn {
+    margin-top: 10px; width: 100%; padding: 8px 14px; font-size: 13px; font-weight: 650;
+    color: #fff; border: none; border-radius: 9px; cursor: pointer;
+    background: linear-gradient(135deg, #059669, #10b981);
+    box-shadow: 0 3px 10px rgba(16,185,129,.3); transition: transform .12s, opacity .15s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .approve-btn svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2.4;
+                     stroke-linecap: round; stroke-linejoin: round; }
+  .approve-btn:hover { transform: translateY(-1px); }
+
+  /* ---------- audit trail ---------- */
+  .audit-item { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); align-items: flex-start; }
+  .audit-item:last-child { border-bottom: none; }
+  .audit-item .a-icon {
+    width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex-shrink: 0;
+  }
+  .audit-item .a-icon svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2;
+                            stroke-linecap: round; stroke-linejoin: round; }
+  .audit-item.pending .a-icon  { background: #fffbeb; color: #d97706; }
+  .audit-item.approved .a-icon { background: #ecfdf5; color: #059669; }
+  .a-text { flex: 1; min-width: 0; }
+  .a-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .a-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+
+  /* ---------- guardrails card ---------- */
+  .formula {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12.5px;
+    background: #0f172a; color: #a5b4fc; border-radius: 10px; padding: 11px 14px; margin-bottom: 13px;
+    line-height: 1.6;
+  }
+  .g-item { display: flex; gap: 10px; padding: 8px 0; align-items: flex-start; }
+  .g-item svg { width: 15px; height: 15px; stroke: #059669; fill: none; stroke-width: 2.2;
+                stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; margin-top: 2px; }
+  .g-item .g-text { font-size: 12.5px; color: #475569; line-height: 1.55; }
+  .g-item .g-text b { color: var(--ink); }
+
+  /* ---------- footer ---------- */
+  footer { max-width: 1180px; margin: 0 auto; padding: 10px 24px 30px; }
+  .foot-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px 22px; display: flex; align-items: center;
+    justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .foot-brand { display: flex; align-items: center; gap: 13px; }
+  .avatar {
+    width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-weight: 750; font-size: 15px; letter-spacing: .02em;
+    box-shadow: 0 4px 12px rgba(99,102,241,.35);
+  }
+  .foot-name { font-size: 13.5px; color: var(--ink); }
+  .foot-links { font-size: 12.5px; margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .foot-links a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .foot-links a:hover { text-decoration: underline; }
+  .foot-links .sep { color: var(--faint); }
+  .foot-note { font-size: 12px; color: var(--muted); line-height: 1.6; max-width: 520px; text-align: right; }
+
+  /* ---------- toast ---------- */
+  #toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: #fff; font-size: 13.5px; font-weight: 500;
+    padding: 12px 20px; border-radius: 12px; box-shadow: 0 8px 30px rgba(15,23,42,.35);
+    opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; max-width: 90vw;
+    z-index: 50;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.error { background: #b91c1c; }
+  #toast.success { background: #047857; }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 980px) {
+    main { grid-template-columns: 1fr; }
+    .foot-note { text-align: left; max-width: none; }
+    .vendor-stats { grid-template-columns: 1fr 1fr; }
+    .vendor-stats .stat:last-child { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="11"/></svg>
+    </div>
+    <div>
+      <h1>ProcurePilot</h1>
+      <p>Procurement &amp; Operations Agent</p>
+    </div>
+  </div>
+  <div class="badges">
+    <span class="badge"><span class="pulse-dot"></span> Local LLM · Ollama</span>
+    <span class="badge guard"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> PR-only — nothing auto-orders</span>
+    <span class="badge hitl"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Human sign-off required</span>
+  </div>
+</header>
+
+<div class="shell">
+
+  <div class="kpis">
+    <div class="kpi indigo">
+      <div class="k-icon"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="11"/></svg></div>
+      <div><div class="k-val num" id="kpiSkus">—</div><div class="k-label">SKUs monitored</div></div>
+    </div>
+    <div class="kpi red">
+      <div class="k-icon"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div><div class="k-val num" id="kpiBelow">—</div><div class="k-label">At / below reorder point</div></div>
+    </div>
+    <div class="kpi amber">
+      <div class="k-icon"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <div><div class="k-val num" id="kpiApprovals">—</div><div class="k-label">PRs awaiting approval</div></div>
+    </div>
+    <div class="kpi green">
+      <div class="k-icon"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+      <div><div class="k-val num" id="kpiSpend">—</div><div class="k-label">Committed spend (pending)</div></div>
+    </div>
+  </div>
+
+  <main>
+    <div class="col">
+
+      <div class="card">
+        <div class="card-head"><h2>Run assessment</h2></div>
+        <div class="input-row">
+          <input id="skuInput" placeholder="SKU (e.g. LI-200)" autocomplete="off" spellcheck="false">
+          <button id="assessBtn">Assess &amp; draft PR</button>
+        </div>
+        <div class="input-row2">
+          <label for="reqByInput">Requested by</label>
+          <input id="reqByInput" value="ops-bot" spellcheck="false">
+        </div>
+        <div class="chips">
+          <span class="label">Try:</span>
+          <span class="chip" data-c="LI-200">LI-200</span>
+          <span class="chip" data-c="LC-100">LC-100</span>
+          <span class="chip" data-c="HY-300">HY-300</span>
+          <span class="chip bad" data-c="XX-999" title="Demos the graceful not-found path">XX-999</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Agent trace</h2></div>
+        <div id="trace">
+          <div class="empty">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Run an assessment — the agent checks stock, computes the reorder point, pulls live<br>
+            vendor quotes, picks a vendor and drafts a policy-checked purchase requisition.
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="decisionCard" hidden>
+        <div class="card-head">
+          <h2>Decision</h2>
+          <span class="spacer"></span>
+          <button id="copyJsonBtn">Copy JSON</button>
+        </div>
+        <div id="decisionBody"></div>
+        <details class="json-wrap">
+          <summary>Raw API response</summary>
+          <pre id="rawJson"></pre>
+        </details>
+      </div>
+
+    </div>
+
+    <div class="col">
+
+      <div class="card">
+        <div class="card-head"><h2>Pending approvals</h2><span class="spacer"></span><span class="pill pending" id="openCount">0</span></div>
+        <div class="approver-row">
+          <label for="approverInput">Approve as</label>
+          <input id="approverInput" value="manager@company.com" spellcheck="false">
+        </div>
+        <div class="sod-note">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Separation of duties: the requester cannot approve their own PR (enforced server-side).
+        </div>
+        <div id="approvalsList">
+          <div class="empty" style="padding:20px">No pending PRs — run an assessment that needs stock.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>PR audit trail</h2><span class="spacer"></span><button class="ghost-btn" id="refreshBtn"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Refresh</button></div>
+        <div id="auditList">
+          <div class="empty" style="padding:20px">No PR history yet</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Policy guardrails</h2></div>
+        <div class="formula">ROP = (daily demand × lead time) + safety stock<br>reorder when (on hand + on order) ≤ ROP</div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>PR-only</b> — the agent drafts requisitions, never places orders; every PR waits for a human decision.</div></div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>MOQ enforcement</b> — quantities below a vendor's minimum are raised to MOQ before the PR is drafted.</div></div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>90-day cover cap</b> — blocks overbuying: requested qty must stay within 90 days of demand.</div></div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>±15% price sanity</b> — live quotes deviating too far from catalog price are rejected.</div></div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>Separation of duties</b> — the requester can never approve their own requisition.</div></div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>Rules decide, LLM advises</b> — deterministic policy gates are authoritative; the local model only refines the rationale and quantity.</div></div>
+      </div>
+
+    </div>
+  </main>
+
+  <div class="card" style="margin-top:18px">
+    <div class="card-head">
+      <h2>Inventory</h2>
+      <span class="spacer"></span>
+      <button class="ghost-btn danger" id="resetBtn"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Reset demo data</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>SKU / Product</th><th>On hand</th><th>On order</th><th>Lead</th>
+          <th>ROP</th><th>Position</th><th>Status</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="invBody">
+        <tr><td colspan="8"><div class="empty" style="border:none;padding:14px">Loading inventory…</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<footer>
+  <div class="foot-card">
+    <div class="foot-brand">
+      <div class="avatar">SS</div>
+      <div>
+        <div class="foot-name">Built by <b>Sanjeet Sharma</b> (CISSP)</div>
+        <div class="foot-links">
+          <a href="https://www.linkedin.com/in/sanjeet-sharma-cissp-17b68570/" target="_blank" rel="noopener">LinkedIn</a>
+          <span class="sep">·</span>
+          <a href="https://github.com/SharmaSanjeet" target="_blank" rel="noopener">GitHub</a>
+          <span class="sep">·</span>
+          <span>MIT License</span>
+        </div>
+      </div>
+    </div>
+    <div class="foot-note">
+      ProcurePilot · Lab 3 of the AI Harness agentic-apps track · inventory, vendor quotes and PRs in SQLite,
+      policy advisor on a fully local Ollama model · deterministic guardrails, full audit trail.
+    </div>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+  const fmtMoney = (v) => money.format(Number(v) || 0);
+
+  const ICON_CHECK = '<svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+  const ICON_ALERT = '<svg viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  const ICON_X = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+  const ICON_INFO = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+
+  let lastData = null;
+  let nameBySku = {};
+
+  let toastTimer;
+  function toast(msg, type) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.className = "show" + (type === "error" ? " error" : type === "success" ? " success" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (t.className = ""), 4500);
+  }
+
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  const SKELETON_STEPS = [
+    ["Inventory check", "Reading stock position…"],
+    ["Reorder-point math", "Computing ROP from demand, lead time and safety stock…"],
+    ["Live vendor quotes", "Fetching prices from the vendor portal…"],
+    ["Vendor selection", "Applying MOQ and price-sanity policy…"],
+    ["Policy advisor", "Running deterministic gates + local LLM advice…"],
+    ["PR draft", "Creating the requisition for human sign-off…"],
+  ];
+
+  function renderSkeleton() {
+    $("trace").innerHTML = SKELETON_STEPS.map(([title, sub], i) => `
+      <div class="step done">
+        <div class="rail"><div class="dot">${i + 1}</div><div class="bar"></div></div>
+        <div class="step-body">
+          <div class="step-title">${title}</div>
+          <div class="step-sub">${sub}</div>
+          <div class="step-status">pending…</div>
+        </div>
+      </div>`).join("");
+  }
+
+  function traceEmpty() {
+    $("trace").innerHTML = `
+      <div class="empty">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Run an assessment — the agent checks stock, computes the reorder point, pulls live<br>
+        vendor quotes, picks a vendor and drafts a policy-checked purchase requisition.
+      </div>`;
+  }
+
+  function stepState(result) {
+    if (result && typeof result === "object" && !Array.isArray(result)) {
+      if (result.ok === false || result.found === false) return "error";
+      if (result.approve === false) return "warn";
+    }
+    return "done";
+  }
+
+  function stepMark(cls) {
+    if (cls === "error") return ICON_X;
+    if (cls === "warn") return "!";
+    return ICON_CHECK;
+  }
+
+  function stepStatus(cls) {
+    return cls === "error" ? "failed" : cls === "warn" ? "blocked by policy" : "done";
+  }
+
+  function detailFor(step) {
+    const r = step.result;
+    if (r == null) return "";
+    if (step.tool === "get_inventory" && r && r.sku) {
+      return `on hand <b>${r.on_hand}</b> · on order <b>${r.on_order}</b> · demand <b>${r.daily_demand}/day</b> · lead <b>${r.lead_time_days}d</b> · safety <b>${r.safety_stock}</b>`;
+    }
+    if (step.tool === "need_reorder" && r && r.ok) {
+      return `reorder point <b>${r.reorder_point}</b> · position <b>${r.position}</b> · needs reorder: <b>${r.needs_reorder ? "yes" : "no"}</b>`;
+    }
+    if (step.tool === "fetch_live_quotes" && Array.isArray(r)) {
+      return r.map((q) => `
+        <div class="quote-row">
+          <span class="q-name">${esc(q.name)}</span>
+          <span class="mono num">${fmtMoney(q.live_price)}/unit</span>
+          <span class="mono num">${q.deviation_pct > 0 ? "+" : ""}${q.deviation_pct}% vs catalog</span>
+          <span class="mono">MOQ ${q.moq} · ${q.lead_time_days}d</span>
+          <span class="q-flag ${q.price_ok ? "ok" : "bad"}">${q.price_ok ? "sane" : "rejected"}</span>
+        </div>`).join("");
+    }
+    if (step.tool === "choose_vendor" && r && r.name) {
+      return `selected <b>${esc(r.name)}</b> — ${esc(r.selection)} · qty <b>${r.qty}</b> @ ${fmtMoney(r.live_price)}/unit`;
+    }
+    if (step.tool === "advise" && r && r.checks) {
+      const c = r.checks;
+      const chip = (ok, label) =>
+        `<span class="check-chip ${ok ? "pass" : "fail"}">${ok ? ICON_CHECK : ICON_X}${label}</span>`;
+      return `
+        <div class="checks">
+          ${chip(c.moq.ok, `MOQ ${c.moq.requested} ≥ ${c.moq.required}`)}
+          ${chip(c.cover_days.ok, `Cover ${c.cover_days.value}d ≤ ${c.cover_days.max}d`)}
+          ${chip(c.price_sanity.ok, `Price ±${Math.abs(c.price_sanity.deviation_pct)}% ≤ ${c.price_sanity.max_pct}%`)}
+        </div>
+        <div class="policy-reason">${esc(r.reason)}</div>`;
+    }
+    if (step.tool === "draft_pr" && r && r.id) {
+      return `PR <b>#${r.id}</b> created · status <b>${esc(r.status)}</b> · line total <b>${fmtMoney(r.line_total)}</b> — awaiting human sign-off`;
+    }
+    return `<span class="mono">${esc(JSON.stringify(r)).slice(0, 220)}</span>`;
+  }
+
+  function renderTrace(steps) {
+    if (!steps || !steps.length) { traceEmpty(); return; }
+    $("trace").innerHTML = steps.map((s, i) => {
+      const cls = stepState(s.result);
+      return `
+      <div class="step ${cls}">
+        <div class="rail"><div class="dot">${stepMark(cls)}</div><div class="bar"></div></div>
+        <div class="step-body">
+          <div class="step-title">${esc(s.label)}</div>
+          <div class="step-sub">${esc(s.tool)}()</div>
+          ${s.result != null ? `<div class="step-detail">${detailFor(s)}</div>` : ""}
+          <div class="step-status">${stepStatus(cls)}</div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function vendorBox(v, qty) {
+    return `
+      <div class="vendor-box">
+        <div class="vendor-top">
+          <div class="vendor-avatar">${esc(v.name.slice(0, 1))}</div>
+          <div>
+            <div class="v-name">${esc(v.name)}</div>
+            <div class="v-meta">${esc(v.selection || "")}</div>
+          </div>
+        </div>
+        <div class="vendor-stats">
+          <div class="stat"><div class="s-label">Quantity</div><div class="s-val num">${qty}${v.moq_adjusted ? " <span style='font-size:11px;color:#b45309;font-weight:600'>· raised to MOQ</span>" : ""}</div></div>
+          <div class="stat"><div class="s-label">Unit price</div><div class="s-val num">${fmtMoney(v.unit_price)}</div></div>
+          <div class="stat"><div class="s-label">Line total</div><div class="s-val num total">${fmtMoney((v.unit_price || 0) * (qty || 0))}</div></div>
+        </div>
+      </div>`;
+  }
+
+  function renderDecision(data) {
+    const card = $("decisionCard");
+    const body = $("decisionBody");
+    lastData = data;
+    card.hidden = false;
+
+    if (!data.ok) {
+      body.innerHTML = `
+        <div class="banner error">${ICON_X}<div><b>Assessment failed.</b> ${esc(data.error || "Unknown error")}</div></div>`;
+      $("rawJson").textContent = JSON.stringify(data, null, 2);
+      return;
+    }
+
+    if (!data.needs_reorder) {
+      body.innerHTML = `
+        <div class="banner ok">${ICON_CHECK}<div><b>No reorder needed.</b> ${esc(data.recommendation || "")}</div></div>
+        <div class="vendor-stats" style="margin-top:14px;border:1px solid var(--line);border-radius:12px">
+          <div class="stat"><div class="s-label">Position</div><div class="s-val num">${data.position}</div></div>
+          <div class="stat"><div class="s-label">Reorder point</div><div class="s-val num">${data.reorder_point}</div></div>
+          <div class="stat"><div class="s-label">Action</div><div class="s-val" style="font-size:13.5px;color:#047857">None — healthy</div></div>
+        </div>`;
+      $("rawJson").textContent = JSON.stringify(data, null, 2);
+      return;
+    }
+
+    if (data.approval && data.approval.status === "blocked") {
+      body.innerHTML = `
+        <div class="banner error">${ICON_X}<div><b>PR blocked by policy.</b> ${esc(data.approval.reason || "")}</div></div>
+        ${data.selected_vendor ? vendorBox(data.selected_vendor, data.selected_vendor.qty) : ""}
+        ${data.policy ? `<div class="advisor-line">engine: ${esc(data.policy.engine)}</div>` : ""}`;
+      $("rawJson").textContent = JSON.stringify(data, null, 2);
+      return;
+    }
+
+    const v = data.selected_vendor || {};
+    const pr = data.pr || {};
+    body.innerHTML = `
+      <div class="banner warn">${ICON_ALERT}<div><b>Purchase requisition drafted — pending human sign-off.</b> ${esc((data.approval || {}).note || "")}</div></div>
+      ${vendorBox(v, v.qty)}
+      <div class="policy-block">
+        <div class="p-title">Policy advisor — verdict: approved</div>
+        <div class="policy-reason">${esc((data.policy || {}).reason || "")}</div>
+        <div class="advisor-line">engine: ${esc((data.policy || {}).engine || "policy-rules")}</div>
+      </div>
+      <div class="policy-block" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:13px;color:#334155">PR <b>#${pr.id}</b> · ${esc(pr.status)} · requested by <b>${esc(pr.requested_by)}</b> · approve it in the <b>Pending approvals</b> panel.</span>
+      </div>`;
+    $("rawJson").textContent = JSON.stringify(data, null, 2);
+    card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  /* ---------- data loading ---------- */
+
+  async function loadInventory() {
+    try {
+      const res = await fetch("/inventory");
+      const data = await res.json();
+      const items = data.items || [];
+      nameBySku = {};
+      items.forEach((it) => (nameBySku[it.sku] = it.name));
+
+      $("kpiSkus").textContent = items.length;
+      const below = items.filter((it) => it.status === "reorder").length;
+      $("kpiBelow").textContent = below;
+      $("kpiBelow").className = "k-val num" + (below ? " alert" : "");
+
+      const fillPct = (it) => Math.min((it.position / (it.reorder_point * 2 || 1)) * 100, 100).toFixed(0);
+      $("invBody").innerHTML = items.map((it) => `
+        <tr>
+          <td class="sku-cell"><div class="sku">${esc(it.sku)}</div><div class="pname">${esc(it.name)}</div></td>
+          <td class="num">${it.on_hand}</td>
+          <td class="num">${it.on_order}</td>
+          <td class="num">${it.lead_time_days}d</td>
+          <td class="num">${it.reorder_point}</td>
+          <td class="pos-cell num">${it.position}
+            <div class="pos-bar"><div class="fill ${it.status}" style="width:${fillPct(it)}%"></div></div>
+          </td>
+          <td><span class="pill ${it.status}">${it.status === "reorder" ? "Reorder now" : it.status === "watch" ? "Watch" : "Healthy"}</span></td>
+          <td style="text-align:right"><button class="row-btn" data-sku="${esc(it.sku)}">Assess</button></td>
+        </tr>`).join("");
+      document.querySelectorAll("#invBody .row-btn").forEach((b) =>
+        b.addEventListener("click", () => {
+          $("skuInput").value = b.dataset.sku;
+          runAssess();
+        })
+      );
+    } catch (e) {
+      $("invBody").innerHTML = `<tr><td colspan="8"><div class="empty" style="border:none;padding:14px">Cannot load inventory — is the server running?</div></td></tr>`;
+    }
+  }
+
+  async function loadApprovals() {
+    try {
+      const res = await fetch("/pr/open");
+      const data = await res.json();
+      const items = data.items || [];
+      $("openCount").textContent = items.length;
+      $("kpiApprovals").textContent = items.length;
+      $("kpiApprovals").className = "k-val num" + (items.length ? " warn" : "");
+      const spend = items.reduce((s, p) => s + (Number(p.qty) || 0) * (Number(p.price_usd) || 0), 0);
+      $("kpiSpend").textContent = fmtMoney(spend);
+
+      if (!items.length) {
+        $("approvalsList").innerHTML = `<div class="empty" style="padding:20px">No pending PRs — run an assessment that needs stock.</div>`;
+        return;
+      }
+      $("approvalsList").innerHTML = items.map((p) => `
+        <div class="pr-card">
+          <div class="pr-top"><span class="pr-id">PR #${p.id}</span><span class="pill pending">pending</span><span class="spacer"></span><span class="num" style="font-weight:700">${fmtMoney(p.qty * p.price_usd)}</span></div>
+          <div class="pr-line"><b>${esc(p.sku)}</b> ${esc(nameBySku[p.sku] || "")} — ${esc(p.vendor)} · <span class="num">${p.qty} × ${fmtMoney(p.price_usd)}</span></div>
+          <div class="pr-sub">requested by ${esc(p.requested_by)} · ${esc(p.created_at)}</div>
+          <button class="approve-btn" data-id="${p.id}" data-req="${esc(p.requested_by)}">${ICON_CHECK}Approve PR #${p.id}</button>
+        </div>`).join("");
+      document.querySelectorAll(".approve-btn").forEach((b) =>
+        b.addEventListener("click", () => approvePr(Number(b.dataset.id), b.dataset.req))
+      );
+    } catch (e) {
+      /* approvals panel is non-critical */
+    }
+  }
+
+  async function loadAudit() {
+    try {
+      const res = await fetch("/pr/recent");
+      const data = await res.json();
+      const items = data.items || [];
+      if (!items.length) {
+        $("auditList").innerHTML = `<div class="empty" style="padding:20px">No PR history yet</div>`;
+        return;
+      }
+      $("auditList").innerHTML = items.map((p) => `
+        <div class="audit-item ${esc(p.status)}">
+          <div class="a-icon">${p.status === "approved" ? ICON_CHECK : ICON_ALERT}</div>
+          <div class="a-text">
+            <div class="a-title">PR #${p.id} <span class="pill ${esc(p.status)}">${esc(p.status)}</span> <span class="num">${fmtMoney(p.qty * p.price_usd)}</span></div>
+            <div class="a-sub">${esc(p.sku)} — ${esc(p.vendor)} · ${p.qty} units · requested by ${esc(p.requested_by)}${p.approved_by ? ` · approved by <b>${esc(p.approved_by)}</b>` : ""}<br>${esc(p.created_at)}</div>
+          </div>
+        </div>`).join("");
+    } catch (e) {
+      /* audit panel is non-critical */
+    }
+  }
+
+  function loadAll() {
+    loadInventory();
+    loadApprovals();
+    loadAudit();
+  }
+
+  /* ---------- actions ---------- */
+
+  async function runAssess() {
+    const sku = $("skuInput").value.trim();
+    if (!sku) { toast("Enter a SKU first", "error"); return; }
+    const btn = $("assessBtn");
+    btn.disabled = true;
+    btn.textContent = "Assessing…";
+    renderSkeleton();
+    try {
+      const res = await fetch("/assess", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sku, requested_by: $("reqByInput").value.trim() || "ops-bot" }),
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      renderTrace(data.steps || []);
+      renderDecision(data);
+      if (!data.ok) {
+        toast(data.error || "Assessment failed", "error");
+      } else if (data.approval && data.approval.status === "blocked") {
+        toast("PR blocked by policy — " + (data.approval.reason || ""), "error");
+      } else if (data.pr) {
+        toast(`PR #${data.pr.id} drafted (${fmtMoney(data.pr.line_total)}) — awaiting human approval`, "success");
+      } else {
+        toast(data.recommendation || "No action needed");
+      }
+      loadAll();
+    } catch (e) {
+      traceEmpty();
+      toast("Assessment failed: " + e.message + " — check that the server is running.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Assess & draft PR";
+    }
+  }
+
+  async function approvePr(id, requestedBy) {
+    const approver = $("approverInput").value.trim();
+    if (!approver) { toast("Enter an approver name first", "error"); return; }
+    try {
+      const res = await fetch(`/approve/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approver }),
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      if (!data.ok) {
+        toast(data.error || "Approval failed", "error");
+        return;
+      }
+      toast(`PR #${id} approved by ${approver} — ${data.qty} units of ${data.sku} moved to on-order`, "success");
+      loadAll();
+    } catch (e) {
+      toast("Approval failed: " + e.message, "error");
+    }
+  }
+
+  async function resetDemo() {
+    if (!confirm("Reset demo data?\n\nInventory and vendors will be reseeded and all PR history cleared.")) return;
+    try {
+      const res = await fetch("/admin/reset", { method: "POST" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      traceEmpty();
+      $("decisionCard").hidden = true;
+      lastData = null;
+      toast("Demo data reset — inventory reseeded, PR history cleared", "success");
+      loadAll();
+    } catch (e) {
+      toast("Reset failed: " + e.message, "error");
+    }
+  }
+
+  /* ---------- wiring ---------- */
+
+  $("assessBtn").addEventListener("click", runAssess);
+  $("skuInput").addEventListener("keydown", (e) => { if (e.key === "Enter") runAssess(); });
+  document.querySelectorAll(".chip").forEach((c) =>
+    c.addEventListener("click", () => {
+      $("skuInput").value = c.dataset.c;
+      runAssess();
+    })
+  );
+  $("refreshBtn").addEventListener("click", () => { loadAll(); toast("Refreshed from the ops database"); });
+  $("resetBtn").addEventListener("click", resetDemo);
+  $("copyJsonBtn").addEventListener("click", async () => {
+    if (!lastData) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(lastData, null, 2));
+      $("copyJsonBtn").textContent = "Copied ✓";
+      setTimeout(() => ($("copyJsonBtn").textContent = "Copy JSON"), 1600);
+    } catch (e) {
+      toast("Copy failed — use the raw JSON panel", "error");
+    }
+  });
+
+  loadAll();
+</script>
+</body>
+</html>
