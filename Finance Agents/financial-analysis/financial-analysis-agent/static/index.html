@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LedgerLens — Financial Analysis Agent</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23059669'/%3E%3Cpath d='M7 22V14M12.5 22V9M18 22v-6M23.5 22V11' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f4f7f5;
+    --card: #ffffff;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --faint: #94a3b8;
+    --line: #e2e8f0;
+    --accent: #059669;
+    --accent2: #14b8a6;
+    --green: #10b981;
+    --amber: #d97706;
+    --red: #ef4444;
+    --radius: 16px;
+    --shadow: 0 1px 2px rgba(15,23,42,.05), 0 4px 16px rgba(15,23,42,.06);
+    --shadow-lg: 0 2px 4px rgba(15,23,42,.05), 0 12px 32px rgba(15,23,42,.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+    background:
+      radial-gradient(1200px 420px at 85% -12%, rgba(20,184,166,.10), transparent 60%),
+      radial-gradient(900px 380px at 0% -10%, rgba(5,150,105,.10), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+
+  /* ---------- header ---------- */
+  header {
+    max-width: 1180px; margin: 0 auto; padding: 26px 24px 6px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 6px 16px rgba(5,150,105,.35);
+  }
+  .logo svg { width: 24px; height: 24px; stroke: #fff; fill: none; stroke-width: 2.4; stroke-linecap: round; }
+  .brand h1 { font-size: 21px; font-weight: 750; letter-spacing: -.02em; }
+  .brand p { font-size: 13px; color: var(--muted); }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+  .badge {
+    font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line); background: #fff; color: var(--muted);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .badge svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .badge .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 1.6s infinite; }
+  .badge.guard { color: #b45309; border-color: #fde68a; background: #fffbeb; }
+  .badge.hitl { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
+
+  /* ---------- layout ---------- */
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 24px 8px; }
+
+  .kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px; margin-top: 16px;
+  }
+  .kpi {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px 18px; display: flex; align-items: center; gap: 14px;
+    animation: rise .35s ease both;
+  }
+  .kpi .k-icon {
+    width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+    display: grid; place-items: center;
+  }
+  .kpi .k-icon svg { width: 19px; height: 19px; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .kpi.emerald .k-icon { background: #ecfdf5; color: #059669; }
+  .kpi.indigo  .k-icon { background: #eef2ff; color: #4f46e5; }
+  .kpi.red     .k-icon { background: #fef2f2; color: #dc2626; }
+  .kpi.amber   .k-icon { background: #fffbeb; color: #d97706; }
+  .kpi .k-val { font-size: 24px; font-weight: 750; letter-spacing: -.02em; line-height: 1.1; }
+  .kpi .k-val.alert { color: #dc2626; }
+  .kpi .k-val.warn  { color: #b45309; }
+  .kpi .k-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  main {
+    display: grid; grid-template-columns: 1.8fr 1fr; gap: 18px;
+    margin-top: 18px; align-items: start;
+  }
+  .col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px; animation: rise .35s ease both;
+  }
+  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .card-head h2 {
+    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted);
+  }
+  .card-head .spacer { flex: 1; }
+
+  /* ---------- run analysis ---------- */
+  .input-row { display: flex; gap: 10px; }
+  .input-row input {
+    flex: 1; min-width: 0; padding: 12px 15px; font-size: 15px; border: 1.5px solid var(--line);
+    border-radius: 12px; outline: none; transition: border .15s, box-shadow .15s; background: #fbfcfe;
+  }
+  .input-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(5,150,105,.15); background: #fff; }
+  #tickerInput { text-transform: uppercase; }
+  #analyzeBtn {
+    padding: 12px 20px; font-size: 15px; font-weight: 600; color: #fff; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    cursor: pointer; box-shadow: 0 4px 14px rgba(5,150,105,.35); transition: transform .12s, opacity .15s;
+    white-space: nowrap;
+  }
+  #analyzeBtn:hover:not(:disabled) { transform: translateY(-1px); }
+  #analyzeBtn:disabled { opacity: .6; cursor: wait; }
+  .input-row2 { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .input-row2 label { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  .input-row2 input {
+    flex: 1; padding: 9px 13px; font-size: 13.5px; border: 1.5px solid var(--line);
+    border-radius: 10px; outline: none; background: #fbfcfe;
+  }
+  .input-row2 input:focus { border-color: var(--accent); background: #fff; }
+  .chips { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .chips .label { font-size: 12px; color: var(--faint); }
+  .chip {
+    font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
+    background: #f1f5f9; color: #334155; border: 1px solid var(--line); cursor: pointer;
+    transition: background .12s, transform .12s;
+  }
+  .chip:hover { background: #e2e8f0; transform: translateY(-1px); }
+  .chip.risk { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+  .chip.bad  { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+
+  /* ---------- trace ---------- */
+  .step { display: flex; gap: 12px; position: relative; padding-bottom: 18px; }
+  .step:last-child { padding-bottom: 2px; }
+  .rail { display: flex; flex-direction: column; align-items: center; width: 26px; flex-shrink: 0; }
+  .dot {
+    width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0; background: #e2e8f0; color: #64748b;
+    transition: background .2s, color .2s;
+  }
+  .dot svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  .bar { width: 2px; flex: 1; background: var(--line); margin-top: 4px; }
+  .step:last-child .bar { display: none; }
+  .step.done  .dot { background: #ecfdf5; color: #059669; }
+  .step.warn  .dot { background: #fffbeb; color: #d97706; }
+  .step.error .dot { background: #fef2f2; color: #dc2626; }
+  .step.done  .bar { background: #a7f3d0; }
+  .step-body { min-width: 0; flex: 1; }
+  .step-title { font-size: 13.5px; font-weight: 700; }
+  .step-sub { font-size: 12px; color: var(--faint); margin-top: 1px; }
+  .step-detail {
+    margin-top: 8px; background: #f8fafc; border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 12px; font-size: 12.5px; color: #334155; overflow-x: auto;
+  }
+  .step-status { font-size: 11px; font-weight: 700; margin-top: 5px; letter-spacing: .04em; text-transform: uppercase; }
+  .step.done  .step-status { color: #059669; }
+  .step.warn  .step-status { color: #b45309; }
+  .step.error .step-status { color: #dc2626; }
+
+  .fin-row { display: flex; gap: 14px; flex-wrap: wrap; padding: 4px 0; font-size: 12.5px; color: #334155; }
+  .fin-row b { color: var(--ink); }
+  .ratio-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 14px; }
+  .ratio-grid .rg-item { font-size: 12px; color: #334155; white-space: nowrap; }
+  .ratio-grid .rg-item b { color: var(--ink); }
+  .flag-chip {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700;
+    padding: 4px 10px; border-radius: 999px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+    margin: 2px 6px 2px 0;
+  }
+  .flag-chip svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .flag-chip.ok { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+  .quote-line { color: #334155; font-size: 12.5px; line-height: 1.55; }
+  .engine-line { font-size: 11px; color: var(--faint); margin-top: 6px; }
+
+  /* ---------- report ---------- */
+  .banner {
+    display: flex; gap: 10px; align-items: flex-start; border-radius: 12px; padding: 12px 14px;
+    font-size: 13px; line-height: 1.5; margin-bottom: 14px;
+  }
+  .banner svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .banner.error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+  .banner.warn  { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .banner.ok    { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+
+  .score-head { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 14px; }
+  .gauge-wrap { position: relative; width: 132px; height: 132px; flex-shrink: 0; }
+  .gauge-wrap svg { transform: rotate(-90deg); }
+  .gauge-track { stroke: #e2e8f0; fill: none; }
+  .gauge-arc { fill: none; stroke-linecap: round; transition: stroke-dasharray .8s ease; }
+  .gauge-center { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+  .gauge-center .g-score { font-size: 27px; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+  .gauge-center .g-sub { font-size: 10.5px; color: var(--faint); margin-top: 3px; }
+  .score-meta { min-width: 0; }
+  .score-meta .co { font-size: 17px; font-weight: 750; letter-spacing: -.01em; }
+  .score-meta .co-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+  .pill-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+  .pill { font-size: 11.5px; font-weight: 700; padding: 4px 11px; border-radius: 999px; }
+  .pill.strong, .pill.healthy, .pill.ok, .pill.published { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .pill.watch, .pill.pending { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .pill.distressed, .pill.concern, .pill.draft { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .pill.healthy2 { background: #f0fdf4; color: #3f6212; border: 1px solid #d9f99d; }
+  .pill.neutral { background: #f1f5f9; color: #475569; border: 1px solid var(--line); }
+  .pill.grade { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border: none; font-size: 12px; padding: 5px 13px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { font-size: 13px; padding: 9px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .ratio-table td:first-child { font-weight: 600; }
+  .band-cell { font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+  .pts-cell { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+  .narrative-block {
+    margin-top: 14px; border: 1px solid var(--line); border-radius: 12px;
+    background: linear-gradient(180deg, #f8fffd, #f8fafc); padding: 14px 16px;
+  }
+  .narrative-block .nb-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); margin-bottom: 7px; }
+  .narrative-block .nb-text { font-size: 13.5px; line-height: 1.65; color: #1e293b; }
+  .narrative-block .nb-risks { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 13px; line-height: 1.55; color: #7c2d12; }
+
+  .brief-line { margin-top: 12px; font-size: 12.5px; color: #334155; background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+
+  .json-wrap { margin-top: 12px; }
+  .json-wrap summary { font-size: 12px; color: var(--muted); cursor: pointer; user-select: none; }
+  .json-wrap pre {
+    margin-top: 8px; background: #0f172a; color: #d1fae5; border-radius: 12px; padding: 14px;
+    font-size: 11.5px; line-height: 1.5; overflow: auto; max-height: 340px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  #copyJsonBtn, .ghost-btn {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+    color: #475569; background: #fff; border: 1px solid var(--line); border-radius: 9px;
+    padding: 6px 11px; cursor: pointer; transition: background .12s;
+  }
+  #copyJsonBtn:hover, .ghost-btn:hover { background: #f1f5f9; }
+  .ghost-btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ghost-btn.danger { color: #b91c1c; border-color: #fecaca; }
+  .ghost-btn.danger:hover { background: #fef2f2; }
+
+  /* ---------- right column ---------- */
+  .approver-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .approver-row label { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  .approver-row input {
+    flex: 1; padding: 9px 13px; font-size: 13.5px; border: 1.5px solid var(--line);
+    border-radius: 10px; outline: none; background: #fbfcfe;
+  }
+  .approver-row input:focus { border-color: var(--accent); background: #fff; }
+  .sod-note {
+    display: flex; gap: 8px; align-items: flex-start; background: #f8fafc; border: 1px solid var(--line);
+    border-radius: 10px; padding: 9px 12px; font-size: 12px; color: #475569; line-height: 1.5; margin-bottom: 12px;
+  }
+  .sod-note svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .brief-item {
+    display: flex; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid var(--line);
+    border-radius: 12px; margin-bottom: 9px; background: #fff; transition: border .12s;
+  }
+  .brief-item:hover { border-color: #a7f3d0; }
+  .brief-item .b-tick {
+    width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0;
+    font-size: 11px; font-weight: 800; letter-spacing: .02em; background: #ecfdf5; color: #047857;
+  }
+  .brief-item .b-main { flex: 1; min-width: 0; }
+  .brief-item .b-name { font-size: 13.5px; font-weight: 700; }
+  .brief-item .b-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .brief-item .b-actions { display: flex; align-items: center; gap: 8px; }
+  .sign-btn {
+    font-size: 12px; font-weight: 700; padding: 7px 13px; border-radius: 9px; border: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; cursor: pointer;
+    box-shadow: 0 3px 10px rgba(5,150,105,.3); transition: transform .12s, opacity .15s; white-space: nowrap;
+  }
+  .sign-btn:hover { transform: translateY(-1px); }
+
+  .g-item { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px dashed #f1f5f9; }
+  .g-item:last-child { border-bottom: none; }
+  .g-item svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; fill: none; stroke: #059669; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .g-text { font-size: 12.5px; color: #475569; line-height: 1.5; }
+  .g-text b { color: var(--ink); }
+  .formula {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11.5px;
+    background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+    color: #334155; line-height: 1.7; margin-bottom: 10px;
+  }
+
+  .spark { vertical-align: middle; }
+  .spark polyline { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .empty {
+    padding: 26px 16px; text-align: center; color: var(--faint); font-size: 13px; line-height: 1.6;
+    border: 1.5px dashed var(--line); border-radius: 12px;
+  }
+  .empty svg { width: 26px; height: 26px; stroke: var(--faint); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 6px; }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #0f172a; color: #fff; padding: 12px 18px; border-radius: 12px; font-size: 13.5px;
+    opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; z-index: 50;
+    max-width: 640px; box-shadow: var(--shadow-lg);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.error { background: #991b1b; }
+  #toast.success { background: #065f46; }
+
+  footer { max-width: 1180px; margin: 26px auto 0; padding: 0 24px 28px; }
+  .foot-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px 20px;
+  }
+  .foot-brand { display: flex; align-items: center; gap: 12px; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+    font-weight: 800; font-size: 14px; letter-spacing: .02em;
+  }
+  .foot-name { font-size: 13.5px; color: var(--ink); }
+  .foot-links { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .foot-links a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .foot-links a:hover { text-decoration: underline; }
+  .sep { color: var(--faint); margin: 0 4px; }
+  .foot-note { font-size: 12px; color: var(--faint); max-width: 460px; line-height: 1.55; text-align: right; }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 980px) {
+    main { grid-template-columns: 1fr; }
+    .foot-note { text-align: left; max-width: none; }
+    .ratio-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M4 20V12M9 20V6M14 20v-8M19 20V9"/></svg>
+    </div>
+    <div>
+      <h1>LedgerLens</h1>
+      <p>Financial Analysis Agent</p>
+    </div>
+  </div>
+  <div class="badges">
+    <span class="badge"><span class="pulse-dot"></span> Local LLM · Ollama</span>
+    <span class="badge guard"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Draft-only — nothing auto-publishes</span>
+    <span class="badge hitl"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Human sign-off required</span>
+  </div>
+</header>
+
+<div class="shell">
+
+  <div class="kpis">
+    <div class="kpi emerald">
+      <div class="k-icon"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4"/></svg></div>
+      <div><div class="k-val num" id="kpiCompanies">—</div><div class="k-label">Companies covered</div></div>
+    </div>
+    <div class="kpi indigo">
+      <div class="k-icon"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+      <div><div class="k-val num" id="kpiAvg">—</div><div class="k-label">Avg health score (latest briefs)</div></div>
+    </div>
+    <div class="kpi amber">
+      <div class="k-icon"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <div><div class="k-val num" id="kpiPending">—</div><div class="k-label">Briefs awaiting sign-off</div></div>
+    </div>
+    <div class="kpi red">
+      <div class="k-icon"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div><div class="k-val num" id="kpiFlags">—</div><div class="k-label">Red flags (latest briefs)</div></div>
+    </div>
+  </div>
+
+  <main>
+    <div class="col">
+
+      <div class="card">
+        <div class="card-head"><h2>Run analysis</h2></div>
+        <div class="input-row">
+          <input id="tickerInput" placeholder="Ticker (e.g. NST)" autocomplete="off" spellcheck="false">
+          <button id="analyzeBtn">Analyze &amp; draft brief</button>
+        </div>
+        <div class="input-row2">
+          <label for="prepByInput">Prepared by</label>
+          <input id="prepByInput" value="analyst-bot" spellcheck="false">
+        </div>
+        <div class="chips">
+          <span class="label">Try:</span>
+          <span class="chip" data-c="NST">NST · tech</span>
+          <span class="chip" data-c="HBT">HBT · biotech</span>
+          <span class="chip" data-c="FLI">FLI · industrial</span>
+          <span class="chip risk" data-c="NPR" title="Demos the watch band — every ratio borderline, no red flags">NPR · watch</span>
+          <span class="chip risk" data-c="AVA" title="Demos the red-flag engine on a distressed carrier">AVA · distressed</span>
+          <span class="chip bad" data-c="ZZZZ" title="Demos the graceful unknown-ticker path">ZZZZ</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Agent trace</h2></div>
+        <div id="trace">
+          <div class="empty">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Run an analysis — the agent pulls statements, checks data integrity, computes ratios,<br>
+            benchmarks the sector, scores financial health and drafts a sign-off-ready analyst brief.
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="reportCard" hidden>
+        <div class="card-head">
+          <h2>Analysis report</h2>
+          <span class="spacer"></span>
+          <button id="copyJsonBtn">Copy JSON</button>
+        </div>
+        <div id="reportBody"></div>
+        <details class="json-wrap">
+          <summary>Raw API response</summary>
+          <pre id="rawJson"></pre>
+        </details>
+      </div>
+
+    </div>
+
+    <div class="col">
+
+      <div class="card">
+        <div class="card-head"><h2>Pending sign-offs</h2><span class="spacer"></span><span class="pill watch" id="openCount">0</span></div>
+        <div class="approver-row">
+          <label for="reviewerInput">Sign off as</label>
+          <input id="reviewerInput" value="senior_analyst@company.com" spellcheck="false">
+        </div>
+        <div class="sod-note">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Separation of duties: the preparer cannot sign off their own brief (enforced server-side).
+        </div>
+        <div id="signoffList">
+          <div class="empty" style="padding:20px">No draft briefs — run an analysis to create one.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Brief audit trail</h2><span class="spacer"></span><button class="ghost-btn" id="refreshBtn"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Refresh</button></div>
+        <div id="auditList">
+          <div class="empty" style="padding:20px">No brief history yet</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Guardrails</h2></div>
+        <div class="formula">health = Σ ratio points (0–100)<br>healthy band → full weight · watch → 45%<br>debt-to-equity scored lower-is-better</div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>Draft-only</b> — the agent drafts analyst briefs, never publishes or circulates them; every brief waits for a human sign-off.</div></div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>Rules decide, LLM advises</b> — ratios, benchmarks, the health score and red flags are deterministic; the local model only writes the narrative.</div></div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>Sector-relative bands</b> — ratios are scored against sector benchmarks, not absolute thresholds (retail ≠ biotech margins).</div></div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>Data-quality gate</b> — statements must pass the assets = liabilities + equity integrity check (±2%) before scoring.</div></div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>Separation of duties</b> — the preparer can never sign off their own brief.</div></div>
+        <div class="g-item"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="g-text"><b>Not investment advice</b> — internal financial-health assessments only; no buy/sell recommendations exist in the code path.</div></div>
+      </div>
+
+    </div>
+  </main>
+
+  <div class="card" style="margin-top:18px">
+    <div class="card-head">
+      <h2>Coverage</h2>
+      <span class="spacer"></span>
+      <button class="ghost-btn danger" id="resetBtn"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Reset demo data</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Company</th><th>Sector</th><th>Revenue (latest)</th><th>3y trend</th>
+          <th>Health</th><th>Red flags</th><th>Latest brief</th>
+        </tr>
+      </thead>
+      <tbody id="covBody">
+        <tr><td colspan="7"><div class="empty" style="border:none;padding:14px">Loading coverage…</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<footer>
+  <div class="foot-card">
+    <div class="foot-brand">
+      <div class="avatar">SS</div>
+      <div>
+        <div class="foot-name">Built by <b>Sanjeet Sharma</b> (CISSP)</div>
+        <div class="foot-links">
+          <a href="https://www.linkedin.com/in/sanjeet-sharma-cissp-17b68570/" target="_blank" rel="noopener">LinkedIn</a>
+          <span class="sep">·</span>
+          <a href="https://github.com/SharmaSanjeet" target="_blank" rel="noopener">GitHub</a>
+          <span class="sep">·</span>
+          <span>MIT License</span>
+        </div>
+      </div>
+    </div>
+    <div class="foot-note">
+      LedgerLens · Lab 4 of the AI Harness agentic-apps track · statements, ratios and briefs in SQLite,
+      analyst advisor on a fully local Ollama model · deterministic guardrails, full audit trail.
+    </div>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  const ICON_CHECK = '<svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+  const ICON_ALERT = '<svg viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  const ICON_X = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+  const ICON_INFO = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+
+  const GRADE_COLOR = { A: "#059669", B: "#10b981", C: "#d97706", D: "#ea580c", F: "#ef4444" };
+  const VERDICT_PILL = { Strong: "strong", Healthy: "healthy2", Watch: "watch", Distressed: "distressed" };
+
+  let lastData = null;
+  let nameByTicker = {};
+
+  let toastTimer;
+  function toast(msg, type) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.className = "show" + (type === "error" ? " error" : type === "success" ? " success" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (t.className = ""), 4500);
+  }
+
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  function fmtVal(value, unit) {
+    if (value === null || value === undefined) return "n/a";
+    if (unit === "%") return value + "%";
+    if (unit === "$M") return value + "M";
+    return value + "x";
+  }
+
+  const fmtM = (v) => (v === null || v === undefined) ? "—"
+    : "$" + Number(v).toLocaleString("en-US") + "M";
+
+  function fmtBand(b) {
+    if (b.absolute) return "healthy > 0";
+    if (b.lower_better) return `healthy ≤ ${b.healthy} · watch ≤ ${b.watch}`;
+    return `healthy ≥ ${b.healthy} · watch ≥ ${b.watch}`;
+  }
+
+  function sparkline(values) {
+    const vs = (values || []).filter((v) => v !== null && v !== undefined);
+    if (vs.length < 2) return "";
+    const min = Math.min(...vs), max = Math.max(...vs);
+    const span = max - min || 1;
+    const pts = vs.map((v, i) => `${(i / (vs.length - 1)) * 54 + 3},${22 - ((v - min) / span) * 16}`).join(" ");
+    const up = vs[vs.length - 1] >= vs[0];
+    return `<svg class="spark" width="60" height="24" viewBox="0 0 60 24"><polyline points="${pts}" style="${up ? "" : "stroke:#ef4444"}"></polyline></svg>`;
+  }
+
+  const SKELETON_STEPS = [
+    ["Company profile", "Looking up the company record…"],
+    ["Financial statements", "Pulling three fiscal years of statements…"],
+    ["Data-quality gate", "Checking balance-sheet integrity…"],
+    ["Ratio suite", "Computing liquidity, leverage, margins and cash flow…"],
+    ["Sector benchmarks", "Fetching benchmark bands for the sector…"],
+    ["Health score", "Scoring each ratio against its band…"],
+    ["Red-flag engine", "Running deterministic risk rules…"],
+    ["Analyst advisor", "Local LLM writes the narrative…"],
+    ["Brief draft", "Creating the brief for human sign-off…"],
+  ];
+
+  function renderSkeleton() {
+    $("trace").innerHTML = SKELETON_STEPS.map(([title, sub], i) => `
+      <div class="step done">
+        <div class="rail"><div class="dot">${i + 1}</div><div class="bar"></div></div>
+        <div class="step-body">
+          <div class="step-title">${title}</div>
+          <div class="step-sub">${sub}</div>
+          <div class="step-status">pending…</div>
+        </div>
+      </div>`).join("");
+  }
+
+  function traceEmpty() {
+    $("trace").innerHTML = `
+      <div class="empty">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Run an analysis — the agent pulls statements, checks data integrity, computes ratios,<br>
+        benchmarks the sector, scores financial health and drafts a sign-off-ready analyst brief.
+      </div>`;
+  }
+
+  function stepState(step, result) {
+    if (result && typeof result === "object" && !Array.isArray(result)) {
+      if (result.ok === false || result.found === false) return "error";
+    }
+    if (step.tool === "detect_red_flags" && Array.isArray(result) && result.length) return "warn";
+    return "done";
+  }
+
+  function stepMark(cls) {
+    if (cls === "error") return ICON_X;
+    if (cls === "warn") return "!";
+    return ICON_CHECK;
+  }
+
+  function stepStatus(cls) {
+    return cls === "error" ? "failed" : cls === "warn" ? "flagged" : "done";
+  }
+
+  function detailFor(step) {
+    const r = step.result;
+    if (r == null) return "";
+    if (step.tool === "get_company_profile" && r && r.name) {
+      return `<b>${esc(r.name)}</b> · sector <b>${esc(r.sector)}</b>`;
+    }
+    if (step.tool === "get_financial_statements" && Array.isArray(r)) {
+      return r.map((y) => `
+        <div class="fin-row num">FY<b>${y.fiscal_year}</b> · revenue <b>${fmtM(y.revenue)}</b>
+        · operating income <b>${fmtM(y.operating_income)}</b> · net income <b>${fmtM(y.net_income)}</b></div>`).join("");
+    }
+    if (step.tool === "data_quality" && r && r.ok !== undefined) {
+      const chip = (ok, label) =>
+        `<span class="flag-chip ${ok ? "ok" : ""}">${ok ? ICON_CHECK : ICON_X}${label}</span>`;
+      return `${chip(r.ok, `Assets = liabilities + equity ±${r.tolerance_pct}%`)}
+        <div class="quote-line" style="margin-top:6px">Balance-sheet integrity verified across ${r.checked_years} fiscal year(s).</div>`;
+    }
+    if (step.tool === "compute_ratios" && r && r.current_ratio !== undefined) {
+      const item = (l, v) => `<div class="rg-item">${l} <b>${v}</b></div>`;
+      return `<div class="ratio-grid num">
+        ${item("current", fmtVal(r.current_ratio, "x"))}
+        ${item("quick", fmtVal(r.quick_ratio, "x"))}
+        ${item("debt/equity", fmtVal(r.debt_to_equity, "x"))}
+        ${item("int. cover", fmtVal(r.interest_coverage, "x"))}
+        ${item("gross", fmtVal(r.gross_margin, "%"))}
+        ${item("operating", fmtVal(r.operating_margin, "%"))}
+        ${item("net", fmtVal(r.net_margin, "%"))}
+        ${item("ROE", fmtVal(r.roe, "%"))}
+        ${item("FCF", fmtVal(r.free_cash_flow, "$M"))}
+      </div>`;
+    }
+    if (step.tool === "benchmark_sector" && r && typeof r === "object") {
+      const rows = Object.entries(r).map(([k, b]) => `
+        <div class="fin-row"><b>${esc(k.replace(/_/g, " "))}</b>
+        <span class="mono">${b.lower_better
+          ? `healthy ≤ ${b.healthy} · watch ≤ ${b.watch} · median ${b.median}`
+          : `healthy ≥ ${b.healthy} · watch ≥ ${b.watch} · median ${b.median}`}</span></div>`).join("");
+      return rows;
+    }
+    if (step.tool === "score_health" && r && r.score !== undefined) {
+      return `score <b>${r.score}/100</b> · grade <b>${esc(r.grade)}</b> · verdict <b>${esc(r.verdict)}</b> · ${r.off_band} ratio(s) off the healthy band`;
+    }
+    if (step.tool === "detect_red_flags" && Array.isArray(r)) {
+      if (!r.length) return `<span class="flag-chip ok">${ICON_CHECK}no red flags</span>`;
+      return r.map((f) => `<span class="flag-chip">${ICON_ALERT}${esc(f.label)}</span>`).join("");
+    }
+    if (step.tool === "advise" && r && r.narrative) {
+      return `<div class="quote-line">“${esc(r.narrative)}”</div><div class="engine-line">engine: ${esc(r.engine)}</div>`;
+    }
+    if (step.tool === "draft_brief" && r && r.id) {
+      return `Brief <b>#${r.id}</b> created · status <b>${esc(r.status)}</b> · score <b>${r.score}/100 (${esc(r.grade)})</b> — awaiting human sign-off`;
+    }
+    return `<span class="mono">${esc(JSON.stringify(r)).slice(0, 220)}</span>`;
+  }
+
+  function renderTrace(steps) {
+    if (!steps || !steps.length) { traceEmpty(); return; }
+    $("trace").innerHTML = steps.map((s) => {
+      const cls = stepState(s, s.result);
+      return `
+      <div class="step ${cls}">
+        <div class="rail"><div class="dot">${stepMark(cls)}</div><div class="bar"></div></div>
+        <div class="step-body">
+          <div class="step-title">${esc(s.label)}</div>
+          <div class="step-sub">${esc(s.tool)}()</div>
+          ${s.result != null ? `<div class="step-detail">${detailFor(s)}</div>` : ""}
+          <div class="step-status">${stepStatus(cls)}</div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function gauge(score, grade) {
+    const C = 2 * Math.PI * 52;
+    const filled = (Math.max(0, Math.min(100, score)) / 100) * C;
+    const color = GRADE_COLOR[grade] || "#94a3b8";
+    return `
+      <div class="gauge-wrap">
+        <svg width="132" height="132" viewBox="0 0 132 132">
+          <circle class="gauge-track" cx="66" cy="66" r="52" stroke-width="13"></circle>
+          <circle class="gauge-arc" cx="66" cy="66" r="52" stroke-width="13"
+                  stroke="${color}" stroke-dasharray="${filled.toFixed(1)} ${C.toFixed(1)}"></circle>
+        </svg>
+        <div class="gauge-center">
+          <div>
+            <div class="g-score num" style="color:${color}">${score}</div>
+            <div class="g-sub">health / 100</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function ratioTable(contributions) {
+    const pill = (s) => `<span class="pill ${s}">${s}</span>`;
+    return `
+      <table class="ratio-table">
+        <thead><tr><th>Ratio</th><th>FY value</th><th>Sector band</th><th>Median</th><th>Status</th><th>Points</th></tr></thead>
+        <tbody>
+        ${contributions.map((c) => `
+          <tr>
+            <td>${esc(c.label)}</td>
+            <td class="num"><b>${fmtVal(c.value, c.unit)}</b></td>
+            <td class="band-cell mono">${esc(fmtBand(c))}</td>
+            <td class="band-cell num">${c.absolute ? "—" : c.median}</td>
+            <td>${pill(c.status)}</td>
+            <td class="pts-cell num">${c.points}/${c.weight}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>`;
+  }
+
+  function renderReport(data) {
+    const card = $("reportCard");
+    const body = $("reportBody");
+    lastData = data;
+    card.hidden = false;
+
+    if (!data.ok) {
+      body.innerHTML = `
+        <div class="banner error">${ICON_X}<div><b>Analysis failed.</b> ${esc(data.error || "Unknown error")}</div></div>`;
+      $("rawJson").textContent = JSON.stringify(data, null, 2);
+      return;
+    }
+
+    if (data.review && data.review.status === "blocked") {
+      body.innerHTML = `
+        <div class="banner error">${ICON_X}<div><b>Analysis blocked by the data-quality gate.</b>
+        ${esc((data.data_quality || {}).issues || []).map(esc).join(" · ")}</div></div>`;
+      $("rawJson").textContent = JSON.stringify(data, null, 2);
+      return;
+    }
+
+    const flags = data.red_flags || [];
+    const flagChips = flags.length
+      ? flags.map((f) => `<span class="flag-chip" title="${esc(f.detail)}">${ICON_ALERT}${esc(f.label)}</span>`).join("")
+      : `<span class="flag-chip ok">${ICON_CHECK}no red flags</span>`;
+
+    body.innerHTML = `
+      <div class="banner warn">${ICON_ALERT}<div><b>Analyst brief drafted — pending human sign-off.</b> ${esc((data.review || {}).note || "")}</div></div>
+      <div class="score-head">
+        ${gauge(data.score, data.grade)}
+        <div class="score-meta">
+          <div class="co">${esc((data.company || {}).name || data.ticker)} <span style="font-weight:600;color:var(--muted)">(${esc(data.ticker)})</span></div>
+          <div class="co-sub">${esc((data.company || {}).sector || "")} · FY${data.fiscal_year} · ${esc((data.company || {}).description || "")}</div>
+          <div class="pill-row">
+            <span class="pill grade">Grade ${esc(data.grade)}</span>
+            <span class="pill ${VERDICT_PILL[data.verdict] || "neutral"}">${esc(data.verdict)}</span>
+            <span class="pill neutral">${flags.length} red flag${flags.length === 1 ? "" : "s"}</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">${flagChips}</div>
+      ${ratioTable(data.contributions || [])}
+      <div class="narrative-block">
+        <div class="nb-title">Analyst narrative · engine ${esc(data.advisor_engine || "rule-narrative")}</div>
+        <div class="nb-text">${esc(data.narrative)}</div>
+        <div class="nb-risks"><b>Key risks:</b> ${esc(data.key_risks)}</div>
+      </div>
+      <div class="brief-line">Brief <b>#${(data.brief || {}).id}</b> · status <b>${esc((data.brief || {}).status)}</b> ·
+      prepared by <b>${esc((data.brief || {}).prepared_by)}</b> — sign it off in the <b>Pending sign-offs</b> panel. The agent never publishes.</div>`;
+    $("rawJson").textContent = JSON.stringify(data, null, 2);
+    card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  /* ---------- data loading ---------- */
+
+  async function loadCompanies() {
+    try {
+      const res = await fetch("/companies");
+      const data = await res.json();
+      const items = data.items || [];
+      nameByTicker = {};
+      items.forEach((c) => (nameByTicker[c.ticker] = c.name));
+
+      $("kpiCompanies").textContent = items.length;
+
+      const withBrief = items.filter((c) => c.last_brief);
+      const avg = withBrief.length
+        ? (withBrief.reduce((s, c) => s + (c.last_brief.score || 0), 0) / withBrief.length).toFixed(1)
+        : "—";
+      $("kpiAvg").textContent = avg;
+
+      const flags = withBrief.reduce((s, c) => s + (c.last_brief.flags_count || 0), 0);
+      $("kpiFlags").textContent = flags;
+      $("kpiFlags").className = "k-val num" + (flags ? " alert" : "");
+
+      $("covBody").innerHTML = items.map((c) => {
+        const b = c.last_brief;
+        return `
+        <tr>
+          <td><b>${esc(c.ticker)}</b> <span style="color:var(--muted);font-size:12px">${esc(c.name)}</span></td>
+          <td>${esc(c.sector)}</td>
+          <td class="num">${fmtM(c.latest_revenue)}</td>
+          <td>${sparkline(c.revenue_history)}</td>
+          <td class="num">${b ? `<b>${b.score}</b> <span class="pill grade" style="padding:3px 9px;font-size:11px">${esc(b.grade)}</span>` : '<span style="color:var(--faint)">not analyzed</span>'}</td>
+          <td class="num">${b ? (b.flags_count ? `<b style="color:#dc2626">${b.flags_count}</b>` : "0") : "—"}</td>
+          <td>${b ? `<span class="pill ${esc(b.status)}">${esc(b.status)}</span>` : '<span style="color:var(--faint)">—</span>'}</td>
+        </tr>`;
+      }).join("");
+    } catch {
+      $("covBody").innerHTML = `<tr><td colspan="7"><div class="empty" style="border:none;padding:14px">Failed to load coverage.</div></td></tr>`;
+    }
+  }
+
+  async function loadOpen() {
+    try {
+      const res = await fetch("/briefs/open");
+      const data = await res.json();
+      const items = data.items || [];
+      $("openCount").textContent = items.length;
+      $("signoffList").innerHTML = items.length ? items.map((b) => `
+        <div class="brief-item">
+          <div class="b-tick">${esc(b.ticker)}</div>
+          <div class="b-main">
+            <div class="b-name">${esc(nameByTicker[b.ticker] || b.ticker)} — ${b.score}/100 (${esc(b.grade)} · ${esc(b.verdict)})</div>
+            <div class="b-meta">FY${b.fiscal_year} · ${b.flags_count} red flag${b.flags_count === 1 ? "" : "s"} · prepared by <b>${esc(b.prepared_by)}</b></div>
+          </div>
+          <div class="b-actions">
+            <button class="sign-btn" data-id="${b.id}">Sign off</button>
+          </div>
+        </div>`).join("")
+        : `<div class="empty" style="padding:20px">No draft briefs — run an analysis to create one.</div>`;
+      document.querySelectorAll(".sign-btn").forEach((btn) =>
+        btn.addEventListener("click", () => publishBrief(Number(btn.dataset.id))));
+    } catch {
+      $("signoffList").innerHTML = `<div class="empty" style="padding:20px">Failed to load pending sign-offs.</div>`;
+    }
+  }
+
+  async function loadRecent() {
+    try {
+      const res = await fetch("/briefs/recent");
+      const data = await res.json();
+      const items = data.items || [];
+      $("auditList").innerHTML = items.length ? items.map((b) => `
+        <div class="brief-item">
+          <div class="b-tick">${esc(b.ticker)}</div>
+          <div class="b-main">
+            <div class="b-name">Brief #${b.id} — ${b.score}/100 (${esc(b.grade)} · ${esc(b.verdict)})</div>
+            <div class="b-meta">prepared by ${esc(b.prepared_by || "—")}${b.reviewed_by ? ` · signed off by <b>${esc(b.reviewed_by)}</b> · ${esc((b.published_at || "").replace("T", " ").slice(0, 16))}` : ` · ${esc((b.created_at || "").replace("T", " ").slice(0, 16))}`}</div>
+          </div>
+          <span class="pill ${esc(b.status)}">${esc(b.status)}</span>
+        </div>`).join("")
+        : `<div class="empty" style="padding:20px">No brief history yet</div>`;
+    } catch {
+      $("auditList").innerHTML = `<div class="empty" style="padding:20px">Failed to load brief history.</div>`;
+    }
+  }
+
+  async function publishBrief(briefId) {
+    const reviewer = $("reviewerInput").value.trim();
+    try {
+      const res = await fetch(`/briefs/${briefId}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviewer }),
+      });
+      const out = await res.json();
+      if (!out.ok) {
+        toast(out.error || "Sign-off failed", "error");
+      } else {
+        toast(`Brief #${out.id} for ${out.ticker} published — signed off by ${out.reviewed_by}`, "success");
+      }
+      loadOpen(); loadRecent(); loadCompanies();
+    } catch {
+      toast("Sign-off request failed", "error");
+    }
+  }
+
+  async function runAnalysis(ticker) {
+    const btn = $("analyzeBtn");
+    const preparedBy = $("prepByInput").value.trim() || "analyst-bot";
+    btn.disabled = true;
+    $("tickerInput").value = ticker;
+    renderSkeleton();
+    try {
+      const res = await fetch("/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticker, prepared_by: preparedBy }),
+      });
+      const data = await res.json();
+      renderTrace(data.steps || []);
+      renderReport(data);
+      if (!data.ok) toast(data.error || "Analysis failed", "error");
+      else toast(`${(data.company || {}).ticker || ticker}: health ${data.score}/100 (${data.grade} · ${data.verdict}) — brief #${(data.brief || {}).id} drafted`, "success");
+      loadOpen(); loadRecent(); loadCompanies();
+    } catch {
+      traceEmpty();
+      toast("Analysis request failed", "error");
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /* ---------- events ---------- */
+
+  $("analyzeBtn").addEventListener("click", () => {
+    const t = $("tickerInput").value.trim().toUpperCase();
+    if (!t) { toast("Enter a ticker first", "error"); return; }
+    runAnalysis(t);
+  });
+  $("tickerInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("analyzeBtn").click();
+  });
+  document.querySelectorAll(".chip").forEach((chip) =>
+    chip.addEventListener("click", () => runAnalysis(chip.dataset.c)));
+  $("refreshBtn").addEventListener("click", () => { loadOpen(); loadRecent(); loadCompanies(); toast("Refreshed"); });
+  $("resetBtn").addEventListener("click", async () => {
+    try {
+      const res = await fetch("/admin/reset", { method: "POST" });
+      const out = await res.json();
+      toast(out.message || "Demo data reset", "success");
+      traceEmpty();
+      $("reportCard").hidden = true;
+      loadOpen(); loadRecent(); loadCompanies();
+    } catch {
+      toast("Reset failed", "error");
+    }
+  });
+  $("copyJsonBtn").addEventListener("click", async () => {
+    if (!lastData) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(lastData, null, 2));
+      toast("Response JSON copied");
+    } catch {
+      toast("Copy failed", "error");
+    }
+  });
+
+  /* ---------- init ---------- */
+  loadCompanies(); loadOpen(); loadRecent();
+  const preset = new URLSearchParams(location.search).get("ticker");
+  if (preset) runAnalysis(preset.toUpperCase());
+</script>
+</body>
+</html>

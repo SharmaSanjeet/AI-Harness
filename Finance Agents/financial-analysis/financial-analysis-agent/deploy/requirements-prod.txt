@@ -1,0 +1,3 @@
+# Production extras — installed only inside the Linux container (see DEPLOYMENT.md).
+# Not part of the local lab requirements.txt (the lab runs on SQLite).
+psycopg[binary]>=3.1
